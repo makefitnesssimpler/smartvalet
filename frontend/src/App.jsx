@@ -1,117 +1,165 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const API_BASE = 'http://localhost:4000/api/tickets';
-
-function TicketRow({ ticket, onRequest, onReady }) {
-  return (
-    <tr>
-      <td>{ticket.id}</td>
-      <td>{ticket.plateNumber}</td>
-      <td>{ticket.spotCode}</td>
-      <td>{ticket.status}</td>
-      <td>
-        <button onClick={() => onRequest(ticket.id)} disabled={ticket.status !== 'parked'}>
-          Request
-        </button>
-        <button onClick={() => onReady(ticket.id)} disabled={ticket.status !== 'requested'}>
-          Ready
-        </button>
-      </td>
-    </tr>
-  );
-}
 
 export default function App() {
   const [tickets, setTickets] = useState([]);
   const [plateNumber, setPlateNumber] = useState('');
   const [spotCode, setSpotCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  async function refresh() {
-    const res = await fetch(API_BASE);
-    const data = await res.json();
-    setTickets(data.items || []);
+  async function loadTickets() {
+    try {
+      setLoading(true);
+      setError('');
+
+      const res = await fetch(API_BASE);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error('Failed to load tickets');
+
+      setTickets(Array.isArray(data) ? data : data.items || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    refresh();
+    loadTickets();
   }, []);
 
-  async function createTicket(event) {
-    event.preventDefault();
-    setError('');
+  const stats = useMemo(() => ({
+    total: tickets.length,
+    parked: tickets.filter(t => t.status === 'parked').length,
+    requested: tickets.filter(t => t.status === 'requested').length,
+    ready: tickets.filter(t => t.status === 'ready').length,
+  }), [tickets]);
 
-    const res = await fetch(API_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plateNumber, spotCode })
-    });
+  async function createTicket(e) {
+    e.preventDefault();
 
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error?.message || 'failed to create ticket');
-      return;
+    if (!plateNumber || !spotCode) return;
+
+    try {
+      setSubmitting(true);
+
+      await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plateNumber, spotCode }),
+      });
+
+      setPlateNumber('');
+      setSpotCode('');
+      loadTickets();
+    } finally {
+      setSubmitting(false);
     }
-
-    setPlateNumber('');
-    setSpotCode('');
-    refresh();
   }
 
   async function updateStatus(id, action) {
-    setError('');
-
-    const res = await fetch(`${API_BASE}/${id}/${action}`, { method: 'PATCH' });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error?.message || 'failed to update status');
-      return;
-    }
-
-    refresh();
+    await fetch(`${API_BASE}/${id}/${action}`, { method: 'PATCH' });
+    loadTickets();
   }
 
   return (
-    <main style={{ fontFamily: 'sans-serif', margin: '2rem' }}>
-      <h1>Smart Valet Dashboard</h1>
+    <div className="app">
+      <aside className="sidebar">
+        <h2>🚗 Smart Valet</h2>
+        <nav>
+          <button className="active">Dashboard</button>
+          <button>Tickets</button>
+          <button>Add</button>
+        </nav>
+      </aside>
 
-      <form onSubmit={createTicket} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <input
-          value={plateNumber}
-          onChange={(event) => setPlateNumber(event.target.value)}
-          placeholder="Plate number"
-        />
-        <input
-          value={spotCode}
-          onChange={(event) => setSpotCode(event.target.value)}
-          placeholder="Spot code"
-        />
-        <button type="submit">Park Vehicle</button>
-      </form>
+      <main className="main">
+        <header>
+          <h1>Dashboard</h1>
+        </header>
 
-      {error ? <p style={{ color: 'crimson' }}>{error}</p> : null}
+        <div className="stats">
+          <div className="card">Total<br /><strong>{stats.total}</strong></div>
+          <div className="card green">Parked<br /><strong>{stats.parked}</strong></div>
+          <div className="card orange">Requested<br /><strong>{stats.requested}</strong></div>
+          <div className="card purple">Ready<br /><strong>{stats.ready}</strong></div>
+        </div>
 
-      <table cellPadding="8" style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <thead>
-          <tr>
-            <th align="left">Ticket</th>
-            <th align="left">Plate</th>
-            <th align="left">Spot</th>
-            <th align="left">Status</th>
-            <th align="left">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tickets.map((ticket) => (
-            <TicketRow
-              key={ticket.id}
-              ticket={ticket}
-              onRequest={(id) => updateStatus(id, 'request')}
-              onReady={(id) => updateStatus(id, 'ready')}
+        <div className="content">
+          <form onSubmit={createTicket} className="panel">
+            <h3>Add Vehicle</h3>
+
+            <input
+              placeholder="Plate Number"
+              value={plateNumber}
+              onChange={e => setPlateNumber(e.target.value)}
             />
-          ))}
-        </tbody>
-      </table>
-    </main>
+
+            <input
+              placeholder="Spot Code"
+              value={spotCode}
+              onChange={e => setSpotCode(e.target.value)}
+            />
+
+            <button disabled={submitting}>
+              {submitting ? 'Saving...' : 'Add'}
+            </button>
+          </form>
+
+          <div className="panel">
+            <h3>Tickets</h3>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Plate</th>
+                  <th>Spot</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {tickets.map(t => (
+                  <tr key={t.id}>
+                    <td>{t.id}</td>
+                    <td>{t.plateNumber}</td>
+                    <td>{t.spotCode}</td>
+                    <td>
+                      <span className={`badge ${t.status}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        disabled={t.status !== 'parked'}
+                        onClick={() => updateStatus(t.id, 'request')}
+                      >
+                        Request
+                      </button>
+
+                      <button
+                        disabled={t.status !== 'requested'}
+                        onClick={() => updateStatus(t.id, 'ready')}
+                      >
+                        Ready
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+          </div>
+        </div>
+
+        {error && <p className="error">{error}</p>}
+      </main>
+    </div>
   );
 }
