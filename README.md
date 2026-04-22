@@ -7,21 +7,7 @@ Simple MVP scaffold with:
 - In-memory ticket storage
 - Ticket lifecycle: `parked -> requested -> ready`
 
-## Quick start (single command)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-What `npm run dev` does in `frontend/`:
-
-- starts Vite for the React UI
-- starts backend API from `../backend`
-- auto-opens the dashboard in your browser
-
-## Alternative: run backend manually
+## Run backend
 
 ```bash
 cd backend
@@ -29,4 +15,12 @@ npm install
 npm run dev
 ```
 
-If you run backend separately, frontend API calls still use `/api` via Vite proxy to `http://localhost:4000`.
+## Run frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend expects backend at `http://localhost:4000`.
