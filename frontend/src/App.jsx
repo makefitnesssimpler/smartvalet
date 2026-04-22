@@ -1,18 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 
-const API_BASE = '/api/tickets';
+const API_BASE = 'http://localhost:4000/api/tickets';
 
-const STATUS_ORDER = ['parked', 'requested', 'ready'];
-
-function statusCountMap(tickets) {
-  return tickets.reduce(
-    (acc, ticket) => {
-      acc[ticket.status] = (acc[ticket.status] || 0) + 1;
-      return acc;
-    },
-    { parked: 0, requested: 0, ready: 0 }
-  );
+function parseErrorMessage(data, fallback) {
+  if (data && typeof data === 'object') {
+    if (typeof data.message === 'string') return data.message;
+    if (data.error && typeof data.error.message === 'string') return data.error.message;
+  }
+  return fallback;
 }
 
 function TicketRow({ ticket, onRequest, onReady }) {
@@ -41,72 +37,98 @@ export default function App() {
   const [plateNumber, setPlateNumber] = useState('');
   const [spotCode, setSpotCode] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const counts = useMemo(() => statusCountMap(tickets), [tickets]);
+  async function refreshTickets() {
+    setLoading(true);
+    setError('');
 
-  async function refresh() {
-    const res = await fetch(API_BASE);
-    const data = await res.json();
-    setTickets(data.items || []);
+    try {
+      const response = await fetch(API_BASE);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(parseErrorMessage(data, 'Failed to load tickets.'));
+        return;
+      }
+
+      setTickets(Array.isArray(data.items) ? data.items : []);
+    } catch (_err) {
+      setError('Could not connect to backend at http://localhost:4000.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    refresh();
+    refreshTickets();
   }, []);
 
-  async function createTicket(event) {
+  async function handleCreateTicket(event) {
     event.preventDefault();
     setError('');
 
-    const res = await fetch(API_BASE, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plateNumber, spotCode })
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error?.message || 'Failed to create ticket');
+    if (!plateNumber.trim() || !spotCode.trim()) {
+      setError('Plate number and spot code are required.');
       return;
     }
 
-    setPlateNumber('');
-    setSpotCode('');
-    refresh();
+    try {
+      const response = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plateNumber: plateNumber.trim(),
+          spotCode: spotCode.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(parseErrorMessage(data, 'Failed to create ticket.'));
+        return;
+      }
+
+      setPlateNumber('');
+      setSpotCode('');
+      refreshTickets();
+    } catch (_err) {
+      setError('Could not connect to backend at http://localhost:4000.');
+    }
   }
 
-  async function updateStatus(id, action) {
+  async function handleMoveStatus(ticketId, action) {
     setError('');
 
-    const res = await fetch(`${API_BASE}/${id}/${action}`, { method: 'PATCH' });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error?.message || 'Failed to update status');
-      return;
-    }
+    try {
+      const response = await fetch(`${API_BASE}/${ticketId}/${action}`, {
+        method: 'PATCH'
+      });
 
-    refresh();
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(parseErrorMessage(data, 'Failed to update ticket status.'));
+        return;
+      }
+
+      refreshTickets();
+    } catch (_err) {
+      setError('Could not connect to backend at http://localhost:4000.');
+    }
   }
 
   return (
     <main className="page">
       <header className="page-header">
         <h1>Smart Valet Dashboard</h1>
-        <p>Track valet tickets and advance lifecycle status quickly.</p>
+        <p>Create tickets and move them from parked → requested → ready.</p>
       </header>
-
-      <section className="summary-grid">
-        {STATUS_ORDER.map((status) => (
-          <article key={status} className={`summary-card summary-${status}`}>
-            <h2>{status}</h2>
-            <strong>{counts[status]}</strong>
-          </article>
-        ))}
-      </section>
 
       <section className="panel">
         <h2>Park Vehicle</h2>
-        <form onSubmit={createTicket} className="ticket-form">
+        <form onSubmit={handleCreateTicket} className="ticket-form">
           <label>
             Plate Number
             <input
@@ -125,14 +147,18 @@ export default function App() {
           </label>
           <button type="submit">Create Ticket</button>
         </form>
-        {error ? <p className="error">{error}</p> : null}
       </section>
 
       <section className="panel">
         <div className="panel-header">
           <h2>Tickets</h2>
-          <button onClick={refresh}>Refresh</button>
+          <button onClick={refreshTickets} disabled={loading}>
+            {loading ? 'Loading…' : 'Refresh'}
+          </button>
         </div>
+
+        {error ? <p className="error">{error}</p> : null}
+
         <div className="table-wrap">
           <table>
             <thead>
@@ -148,7 +174,7 @@ export default function App() {
               {tickets.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="empty-state">
-                    No active tickets yet.
+                    {loading ? 'Loading tickets…' : 'No tickets yet.'}
                   </td>
                 </tr>
               ) : (
@@ -156,8 +182,8 @@ export default function App() {
                   <TicketRow
                     key={ticket.id}
                     ticket={ticket}
-                    onRequest={(nextId) => updateStatus(nextId, 'request')}
-                    onReady={(nextId) => updateStatus(nextId, 'ready')}
+                    onRequest={(id) => handleMoveStatus(id, 'request')}
+                    onReady={(id) => handleMoveStatus(id, 'ready')}
                   />
                 ))
               )}
