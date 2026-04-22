@@ -20,13 +20,25 @@ function TicketRow({ ticket, onRequest, onReady }) {
       <td>
         <span className={`status status-${ticket.status}`}>{ticket.status}</span>
       </td>
-      <td className="actions">
-        <button onClick={() => onRequest(ticket.id)} disabled={ticket.status !== 'parked'}>
-          Request
-        </button>
-        <button onClick={() => onReady(ticket.id)} disabled={ticket.status !== 'requested'}>
-          Ready
-        </button>
+      <td>
+        <div className="actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => onRequest(ticket.id)}
+            disabled={ticket.status !== 'parked'}
+          >
+            Request
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => onReady(ticket.id)}
+            disabled={ticket.status !== 'requested'}
+          >
+            Ready
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -120,44 +132,57 @@ export default function App() {
   }
 
   return (
-    <main className="page">
-      <header className="page-header">
+    <main className="dashboard">
+      <header className="dashboard-header">
         <h1>Smart Valet Dashboard</h1>
-        <p>Create tickets and move them from parked → requested → ready.</p>
+        <p>Manage vehicle parking tickets and lifecycle updates in one place.</p>
       </header>
 
-      <section className="panel">
-        <h2>Park Vehicle</h2>
+      <section className="card">
+        <div className="card-header">
+          <h2>Park Vehicle</h2>
+          <p>Create a new valet ticket.</p>
+        </div>
+
         <form onSubmit={handleCreateTicket} className="ticket-form">
-          <label>
-            Plate Number
+          <div className="field">
+            <label htmlFor="plateNumber">Plate Number</label>
             <input
+              id="plateNumber"
               value={plateNumber}
               onChange={(event) => setPlateNumber(event.target.value)}
               placeholder="ABC-1234"
             />
-          </label>
-          <label>
-            Spot Code
+          </div>
+
+          <div className="field">
+            <label htmlFor="spotCode">Spot Code</label>
             <input
+              id="spotCode"
               value={spotCode}
               onChange={(event) => setSpotCode(event.target.value)}
               placeholder="B2-17"
             />
-          </label>
-          <button type="submit">Create Ticket</button>
+          </div>
+
+          <button type="submit" className="btn btn-primary submit-btn">
+            Create Ticket
+          </button>
         </form>
       </section>
 
-      <section className="panel">
-        <div className="panel-header">
-          <h2>Tickets</h2>
-          <button onClick={refreshTickets} disabled={loading}>
+      <section className="card">
+        <div className="card-header card-header-row">
+          <div>
+            <h2>Tickets Table</h2>
+            <p>Track ticket state and run lifecycle actions.</p>
+          </div>
+          <button type="button" className="btn btn-secondary" onClick={refreshTickets} disabled={loading}>
             {loading ? 'Loading…' : 'Refresh'}
           </button>
         </div>
 
-        {error ? <p className="error">{error}</p> : null}
+        {error ? <p className="error-banner">{error}</p> : null}
 
         <div className="table-wrap">
           <table>
