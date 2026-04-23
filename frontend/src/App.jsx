@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE = 'http://localhost:4000/api/tickets';
 
@@ -9,6 +9,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [activeView, setActiveView] = useState('dashboard');
+  const addSectionRef = useRef(null);
+  const ticketsSectionRef = useRef(null);
 
   async function loadTickets() {
     try {
@@ -39,6 +42,18 @@ export default function App() {
     ready: tickets.filter(t => t.status === 'ready').length,
   }), [tickets]);
 
+
+  function focusSection(view) {
+    setActiveView(view);
+
+    if (view === 'dashboard') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const target = view === 'tickets' ? ticketsSectionRef.current : addSectionRef.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   async function createTicket(e) {
     e.preventDefault();
 
@@ -71,26 +86,54 @@ export default function App() {
       <aside className="sidebar">
         <h2>🚗 Smart Valet</h2>
         <nav>
-          <button className="active">Dashboard</button>
-          <button>Tickets</button>
-          <button>Add</button>
+          <button
+            className={activeView === 'dashboard' ? 'active' : ''}
+            onClick={() => focusSection('dashboard')}
+          >
+            Dashboard
+          </button>
+          <button
+            className={activeView === 'tickets' ? 'active' : ''}
+            onClick={() => focusSection('tickets')}
+          >
+            Tickets
+          </button>
+          <button
+            className={activeView === 'add' ? 'active' : ''}
+            onClick={() => focusSection('add')}
+          >
+            Add
+          </button>
         </nav>
       </aside>
 
       <main className="main">
-        <header>
+        <header className="main-header">
           <h1>Dashboard</h1>
+          <p>Operations snapshot for live parking activity.</p>
         </header>
 
         <div className="stats">
-          <div className="card">Total<br /><strong>{stats.total}</strong></div>
-          <div className="card green">Parked<br /><strong>{stats.parked}</strong></div>
-          <div className="card orange">Requested<br /><strong>{stats.requested}</strong></div>
-          <div className="card purple">Ready<br /><strong>{stats.ready}</strong></div>
+          <div className="card total">
+            <span>Total Tickets</span>
+            <strong>{stats.total}</strong>
+          </div>
+          <div className="card green">
+            <span>Parked</span>
+            <strong>{stats.parked}</strong>
+          </div>
+          <div className="card orange">
+            <span>Requested</span>
+            <strong>{stats.requested}</strong>
+          </div>
+          <div className="card purple">
+            <span>Ready</span>
+            <strong>{stats.ready}</strong>
+          </div>
         </div>
 
         <div className="content">
-          <form onSubmit={createTicket} className="panel">
+          <form ref={addSectionRef} onSubmit={createTicket} className="panel form-panel">
             <h3>Add Vehicle</h3>
 
             <input
@@ -110,7 +153,7 @@ export default function App() {
             </button>
           </form>
 
-          <div className="panel">
+          <div ref={ticketsSectionRef} className="panel table-panel">
             <h3>Tickets</h3>
 
             <table>
@@ -135,8 +178,9 @@ export default function App() {
                         {t.status}
                       </span>
                     </td>
-                    <td>
+                    <td className="actions-cell">
                       <button
+                        className="action-btn"
                         disabled={t.status !== 'parked'}
                         onClick={() => updateStatus(t.id, 'request')}
                       >
@@ -144,6 +188,7 @@ export default function App() {
                       </button>
 
                       <button
+                        className="action-btn"
                         disabled={t.status !== 'requested'}
                         onClick={() => updateStatus(t.id, 'ready')}
                       >
@@ -155,6 +200,7 @@ export default function App() {
               </tbody>
             </table>
 
+            {loading && <p className="table-note">Refreshing tickets...</p>}
           </div>
         </div>
 
