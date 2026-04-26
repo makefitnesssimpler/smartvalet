@@ -9,6 +9,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [view, setView] = useState('dashboard');
   const [activeView, setActiveView] = useState('dashboard');
   const addSectionRef = useRef(null);
   const ticketsSectionRef = useRef(null);
@@ -97,18 +98,24 @@ export default function App() {
         <h2>🚗 Smart Valet</h2>
         <nav>
           <button
+            className={view === 'dashboard' ? 'active' : ''}
+            onClick={() => setView('dashboard')}
             className={activeView === 'dashboard' ? 'active' : ''}
             onClick={() => focusSection('dashboard')}
           >
             Dashboard
           </button>
           <button
+            className={view === 'tickets' ? 'active' : ''}
+            onClick={() => setView('tickets')}
             className={activeView === 'tickets' ? 'active' : ''}
             onClick={() => focusSection('tickets')}
           >
             Tickets
           </button>
           <button
+            className={view === 'add' ? 'active' : ''}
+            onClick={() => setView('add')}
             className={activeView === 'add' ? 'active' : ''}
             onClick={() => focusSection('add')}
           >
@@ -119,6 +126,38 @@ export default function App() {
 
       <main className="main">
         <header className="main-header">
+          <h1>{isTicketsView ? 'Tickets' : isAddView ? 'Add Vehicle' : 'Dashboard'}</h1>
+          <p>
+            {isTicketsView
+              ? 'Manage and update all valet tickets.'
+              : isAddView
+                ? 'Register a new vehicle ticket.'
+                : 'Operations snapshot for live parking activity.'}
+          </p>
+        </header>
+
+        {isDashboardView && (
+          <div className="stats">
+            <div className="card total">
+              <span>Total Tickets</span>
+              <strong>{stats.total}</strong>
+            </div>
+            <div className="card green">
+              <span>Parked</span>
+              <strong>{stats.parked}</strong>
+            </div>
+            <div className="card orange">
+              <span>Requested</span>
+              <strong>{stats.requested}</strong>
+            </div>
+            <div className="card purple">
+              <span>Ready</span>
+              <strong>{stats.ready}</strong>
+            </div>
+            <div className="card slate">
+              <span>Closed</span>
+              <strong>{stats.closed}</strong>
+            </div>
           <h1>Dashboard</h1>
           <p>Operations snapshot for live parking activity.</p>
         </header>
@@ -297,10 +336,11 @@ export default function App() {
               {loading && <p className="table-note">Refreshing tickets...</p>}
             </div>
           )}
+        </div> {/* /.content */}
         </div>
 
         {error && <p className="error">{error}</p>}
-      </main>
+      </main> {/* /.main */}
     </div>
   );
 }
