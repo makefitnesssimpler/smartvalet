@@ -72,6 +72,18 @@ body {
   letter-spacing: -0.02em;
 }
 
+}
+
+.main-header {
+  margin-bottom: 22px;
+}
+
+.main-header h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
 .main-header p {
   margin: 6px 0 0;
   color: #64748b;
@@ -152,6 +164,13 @@ body {
   font-size: 1rem;
 }
 
+}
+
+.panel h3 {
+  margin: 0 0 14px;
+  font-size: 1rem;
+}
+
 .form-panel input {
   display: block;
   width: 100%;
@@ -161,6 +180,14 @@ body {
   border-radius: 10px;
   background: #f8fafc;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-panel input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+}
+
 }
 
 .form-panel input:focus {
@@ -237,6 +264,13 @@ tbody tr:hover {
 .badge.ready {
   background: #e0e7ff;
   color: #3730a3;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
 }
 
 .actions-cell {
