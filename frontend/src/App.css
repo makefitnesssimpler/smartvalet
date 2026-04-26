@@ -124,19 +124,11 @@ body {
   background: linear-gradient(160deg, #f5f3ff, #ede9fe);
 }
 
-.card.slate {
-  background: linear-gradient(160deg, #f8fafc, #e2e8f0);
-}
-
 .content {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
-}
-
-.content.single-view {
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .panel {

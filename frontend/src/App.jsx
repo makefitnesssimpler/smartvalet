@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE = 'http://localhost:4000/api/tickets';
 
@@ -9,7 +9,9 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState('dashboard');
+  const [activeView, setActiveView] = useState('dashboard');
+  const addSectionRef = useRef(null);
+  const ticketsSectionRef = useRef(null);
 
   async function loadTickets() {
     try {
@@ -46,6 +48,18 @@ export default function App() {
     closed: tickets.filter(t => t.status === 'closed').length,
   }), [activeTickets, tickets]);
 
+
+  function focusSection(view) {
+    setActiveView(view);
+
+    if (view === 'dashboard') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const target = view === 'tickets' ? ticketsSectionRef.current : addSectionRef.current;
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
   async function createTicket(e) {
     e.preventDefault();
 
@@ -83,20 +97,20 @@ export default function App() {
         <h2>🚗 Smart Valet</h2>
         <nav>
           <button
-            className={view === 'dashboard' ? 'active' : ''}
-            onClick={() => setView('dashboard')}
+            className={activeView === 'dashboard' ? 'active' : ''}
+            onClick={() => focusSection('dashboard')}
           >
             Dashboard
           </button>
           <button
-            className={view === 'tickets' ? 'active' : ''}
-            onClick={() => setView('tickets')}
+            className={activeView === 'tickets' ? 'active' : ''}
+            onClick={() => focusSection('tickets')}
           >
             Tickets
           </button>
           <button
-            className={view === 'add' ? 'active' : ''}
-            onClick={() => setView('add')}
+            className={activeView === 'add' ? 'active' : ''}
+            onClick={() => focusSection('add')}
           >
             Add
           </button>
@@ -105,38 +119,98 @@ export default function App() {
 
       <main className="main">
         <header className="main-header">
-          <h1>{isTicketsView ? 'Tickets' : isAddView ? 'Add Vehicle' : 'Dashboard'}</h1>
-          <p>
-            {isTicketsView
-              ? 'Manage and update all valet tickets.'
-              : isAddView
-                ? 'Register a new vehicle ticket.'
-                : 'Operations snapshot for live parking activity.'}
-          </p>
+          <h1>Dashboard</h1>
+          <p>Operations snapshot for live parking activity.</p>
         </header>
 
-        {isDashboardView && (
-          <div className="stats">
-            <div className="card total">
-              <span>Total Tickets</span>
-              <strong>{stats.total}</strong>
-            </div>
-            <div className="card green">
-              <span>Parked</span>
-              <strong>{stats.parked}</strong>
-            </div>
-            <div className="card orange">
-              <span>Requested</span>
-              <strong>{stats.requested}</strong>
-            </div>
-            <div className="card purple">
-              <span>Ready</span>
-              <strong>{stats.ready}</strong>
-            </div>
-            <div className="card slate">
-              <span>Closed</span>
-              <strong>{stats.closed}</strong>
-            </div>
+        <div className="stats">
+          <div className="card total">
+            <span>Total Tickets</span>
+            <strong>{stats.total}</strong>
+          </div>
+          <div className="card green">
+            <span>Parked</span>
+            <strong>{stats.parked}</strong>
+          </div>
+          <div className="card orange">
+            <span>Requested</span>
+            <strong>{stats.requested}</strong>
+          </div>
+          <div className="card purple">
+            <span>Ready</span>
+            <strong>{stats.ready}</strong>
+          </div>
+        </div>
+
+        <div className="content">
+          <form ref={addSectionRef} onSubmit={createTicket} className="panel form-panel">
+            <h3>Add Vehicle</h3>
+
+            <input
+              placeholder="Plate Number"
+              value={plateNumber}
+              onChange={e => setPlateNumber(e.target.value)}
+            />
+
+            <input
+              placeholder="Spot Code"
+              value={spotCode}
+              onChange={e => setSpotCode(e.target.value)}
+            />
+
+            <button disabled={submitting}>
+              {submitting ? 'Saving...' : 'Add'}
+            </button>
+          </form>
+
+          <div ref={ticketsSectionRef} className="panel table-panel">
+            <h3>Tickets</h3>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Plate</th>
+                  <th>Spot</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {tickets.map(t => (
+                  <tr key={t.id}>
+                    <td>{t.id}</td>
+                    <td>{t.plateNumber}</td>
+                    <td>{t.spotCode}</td>
+                    <td>
+                      <span className={`badge ${t.status}`}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="actions-cell">
+                      <button
+                        className="action-btn"
+                        disabled={t.status !== 'parked'}
+                        onClick={() => updateStatus(t.id, 'request')}
+                      >
+                        Request
+                      </button>
+
+                      <button
+                        className="action-btn"
+                        disabled={t.status !== 'requested'}
+                        onClick={() => updateStatus(t.id, 'ready')}
+                      >
+                        Ready
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {loading && <p className="table-note">Refreshing tickets...</p>}
           </div>
         )}
 
