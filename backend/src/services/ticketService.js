@@ -3,7 +3,8 @@ import { addTicket, getAllTickets, getTicketById, updateTicket } from '../data/t
 const VALID_TRANSITIONS = {
   parked: 'requested',
   requested: 'ready',
-  ready: null
+  ready: 'closed',
+  closed: null
 };
 
 function nowIso() {
