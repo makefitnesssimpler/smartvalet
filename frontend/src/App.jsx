@@ -41,6 +41,10 @@ export default function App() {
     requested: tickets.filter(t => t.status === 'requested').length,
     ready: tickets.filter(t => t.status === 'ready').length,
   }), [tickets]);
+  const activeTickets = useMemo(
+    () => tickets.filter((ticket) => ticket.status !== 'closed'),
+    [tickets]
+  );
 
 
   function focusSection(view) {
@@ -168,7 +172,7 @@ export default function App() {
               </thead>
 
               <tbody>
-                {tickets.map(t => (
+                {activeTickets.map(t => (
                   <tr key={t.id}>
                     <td>{t.id}</td>
                     <td>{t.plateNumber}</td>
@@ -194,6 +198,15 @@ export default function App() {
                       >
                         Ready
                       </button>
+
+                      {t.status === 'ready' && (
+                        <button
+                          className="action-btn"
+                          onClick={() => updateStatus(t.id, 'handover')}
+                        >
+                          Handover
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
