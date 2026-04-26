@@ -48,13 +48,4 @@ router.patch('/:id/ready', (req, res, next) => {
   }
 });
 
-router.patch('/:id/handover', (req, res, next) => {
-  try {
-    const ticket = moveTicketStatus(req.params.id, 'closed');
-    res.json(ticket);
-  } catch (error) {
-    next(error);
-  }
-});
-
 export default router;

@@ -35,18 +35,12 @@ export default function App() {
     loadTickets();
   }, []);
 
-  const activeTickets = useMemo(
-    () => tickets.filter(t => t.status !== 'closed'),
-    [tickets],
-  );
-
   const stats = useMemo(() => ({
-    total: activeTickets.length,
-    parked: activeTickets.filter(t => t.status === 'parked').length,
-    requested: activeTickets.filter(t => t.status === 'requested').length,
-    ready: activeTickets.filter(t => t.status === 'ready').length,
-    closed: tickets.filter(t => t.status === 'closed').length,
-  }), [activeTickets, tickets]);
+    total: tickets.length,
+    parked: tickets.filter(t => t.status === 'parked').length,
+    requested: tickets.filter(t => t.status === 'requested').length,
+    ready: tickets.filter(t => t.status === 'ready').length,
+  }), [tickets]);
 
 
   function focusSection(view) {
@@ -86,10 +80,6 @@ export default function App() {
     await fetch(`${API_BASE}/${id}/${action}`, { method: 'PATCH' });
     loadTickets();
   }
-
-  const isDashboardView = view === 'dashboard';
-  const isTicketsView = view === 'tickets';
-  const isAddView = view === 'add';
 
   return (
     <div className="app">
@@ -212,91 +202,6 @@ export default function App() {
 
             {loading && <p className="table-note">Refreshing tickets...</p>}
           </div>
-        )}
-
-        <div className={`content ${isDashboardView ? '' : 'single-view'}`.trim()}>
-          {(isDashboardView || isAddView) && (
-            <form onSubmit={createTicket} className="panel form-panel">
-              <h3>Add Vehicle</h3>
-
-              <input
-                placeholder="Plate Number"
-                value={plateNumber}
-                onChange={e => setPlateNumber(e.target.value)}
-              />
-
-              <input
-                placeholder="Spot Code"
-                value={spotCode}
-                onChange={e => setSpotCode(e.target.value)}
-              />
-
-              <button disabled={submitting}>
-                {submitting ? 'Saving...' : 'Add'}
-              </button>
-            </form>
-          )}
-
-          {(isDashboardView || isTicketsView) && (
-            <div className="panel table-panel">
-              <h3>Tickets</h3>
-
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Plate</th>
-                    <th>Spot</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {activeTickets.map(t => (
-                    <tr key={t.id}>
-                      <td>{t.id}</td>
-                      <td>{t.plateNumber}</td>
-                      <td>{t.spotCode}</td>
-                      <td>
-                        <span className={`badge ${t.status}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="actions-cell">
-                        <button
-                          className="action-btn"
-                          disabled={t.status !== 'parked'}
-                          onClick={() => updateStatus(t.id, 'request')}
-                        >
-                          Request
-                        </button>
-
-                        <button
-                          className="action-btn"
-                          disabled={t.status !== 'requested'}
-                          onClick={() => updateStatus(t.id, 'ready')}
-                        >
-                          Ready
-                        </button>
-
-                        {t.status === 'ready' && (
-                          <button
-                            className="action-btn"
-                            onClick={() => updateStatus(t.id, 'handover')}
-                          >
-                            Handover
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {loading && <p className="table-note">Refreshing tickets...</p>}
-            </div>
-          )}
         </div>
 
         {error && <p className="error">{error}</p>}

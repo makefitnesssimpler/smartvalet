@@ -3,8 +3,7 @@ import { addTicket, getAllTickets, getTicketById, updateTicket } from '../data/t
 const VALID_TRANSITIONS = {
   parked: 'requested',
   requested: 'ready',
-  ready: 'closed',
-  closed: null
+  ready: null
 };
 
 function nowIso() {
@@ -38,8 +37,7 @@ export function createTicket(input) {
     createdAt,
     updatedAt: createdAt,
     requestedAt: null,
-    readyAt: null,
-    handoverAt: null
+    readyAt: null
   };
 
   return addTicket(ticket);
@@ -76,10 +74,6 @@ export function moveTicketStatus(id, targetStatus) {
 
   if (targetStatus === 'ready') {
     patch.readyAt = patch.updatedAt;
-  }
-
-  if (targetStatus === 'closed') {
-    patch.handoverAt = patch.updatedAt;
   }
 
   return updateTicket(id, patch);
