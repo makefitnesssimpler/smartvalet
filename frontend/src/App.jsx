@@ -149,6 +149,10 @@ function ValetDashboard() {
     return `${CUSTOMER_QR_BASE_URL}?id=${encodeURIComponent(ticketId)}`;
   }
 
+  function getQrImageUrl(ticketId) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getCustomerUrl(ticketId))}`;
+  }
+
   function focusSection(view) {
     setActiveView(view);
 
@@ -332,6 +336,7 @@ function ValetDashboard() {
                         <td colSpan={5}>
                           <div className="qr-row">
                             <QRCode value={getCustomerUrl(t.id)} size={140} />
+                            <img src={getQrImageUrl(t.id)} alt={`QR for ticket ${t.id}`} width={140} height={140} />
                             <div className="qr-links">
                               <a href={getCustomerUrl(t.id)} target="_blank" rel="noreferrer">
                                 Open customer ticket page
