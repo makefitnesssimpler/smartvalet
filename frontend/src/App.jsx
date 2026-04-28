@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import QRCode from 'qrcode.react';
 
 const API_BASE = 'http://localhost:4000/api/tickets';
 const CUSTOMER_PATH = '/customer-ticket';
@@ -334,6 +335,7 @@ function ValetDashboard() {
                       <tr>
                         <td colSpan={5}>
                           <div className="qr-row">
+                            <QRCode value={getCustomerUrl(t.id)} size={140} />
                             <img src={getQrImageUrl(t.id)} alt={`QR for ticket ${t.id}`} width={140} height={140} />
                             <div className="qr-links">
                               <a href={getCustomerUrl(t.id)} target="_blank" rel="noreferrer">
