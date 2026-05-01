@@ -1,8 +1,105 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 
 const API_BASE = 'http://localhost:4000/api/tickets';
+const CUSTOMER_PATH = '/customer-ticket';
+const CUSTOMER_QR_BASE_URL = 'http://localhost:5173/customer-ticket';
 
-export default function App() {
+function CustomerTicketPage({ ticketId }) {
+  const [ticket, setTicket] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requesting, setRequesting] = useState(false);
+
+  async function loadTicket() {
+    if (!ticketId) {
+      setError('Missing ticket id');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      const res = await fetch(`${API_BASE}/${ticketId}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to load ticket');
+      }
+
+      setTicket(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadTicket();
+  }, [ticketId]);
+
+  async function requestVehicle() {
+    if (!ticket?.id) return;
+
+    try {
+      setRequesting(true);
+      setRequestMessage('');
+      setError('');
+
+      const res = await fetch(`${API_BASE}/${ticket.id}/request`, { method: 'PATCH' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to request vehicle');
+      }
+
+      setTicket(data);
+      setRequestMessage('Your vehicle has been requested.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRequesting(false);
+    }
+  }
+
+  return (
+    <div className="customer-page">
+      <div className="customer-panel">
+        <h2>Smart Valet Ticket</h2>
+
+        {loading && <p>Loading ticket...</p>}
+
+        {!loading && ticket && (
+          <>
+            <p><strong>Ticket ID:</strong> {ticket.id}</p>
+            <p><strong>Plate Number:</strong> {ticket.plateNumber}</p>
+            <p>
+              <strong>Current Status:</strong>{' '}
+              <span className={`badge ${ticket.status}`}>{ticket.status}</span>
+            </p>
+
+            <button
+              className="customer-request-btn"
+              disabled={ticket.status !== 'parked' || requesting}
+              onClick={requestVehicle}
+            >
+              {requesting ? 'Requesting...' : 'Request Vehicle'}
+            </button>
+
+            {requestMessage && <p className="success">{requestMessage}</p>}
+          </>
+        )}
+
+        {error && <p className="error">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function ValetDashboard() {
   const [tickets, setTickets] = useState([]);
   const [plateNumber, setPlateNumber] = useState('');
   const [spotCode, setSpotCode] = useState('');
@@ -10,6 +107,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [activeView, setActiveView] = useState('dashboard');
+  const [visibleQrId, setVisibleQrId] = useState(null);
   const addSectionRef = useRef(null);
   const ticketsSectionRef = useRef(null);
 
@@ -37,15 +135,19 @@ export default function App() {
 
   const stats = useMemo(() => ({
     total: tickets.length,
-    parked: tickets.filter(t => t.status === 'parked').length,
-    requested: tickets.filter(t => t.status === 'requested').length,
-    ready: tickets.filter(t => t.status === 'ready').length,
+    parked: tickets.filter((t) => t.status === 'parked').length,
+    requested: tickets.filter((t) => t.status === 'requested').length,
+    ready: tickets.filter((t) => t.status === 'ready').length,
   }), [tickets]);
+
   const activeTickets = useMemo(
     () => tickets.filter((ticket) => ticket.status !== 'closed'),
     [tickets]
   );
 
+  function getCustomerUrl(ticketId) {
+    return `${CUSTOMER_QR_BASE_URL}?id=${encodeURIComponent(ticketId)}`;
+  }
 
   function focusSection(view) {
     setActiveView(view);
@@ -58,6 +160,7 @@ export default function App() {
     const target = view === 'tickets' ? ticketsSectionRef.current : addSectionRef.current;
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
   async function createTicket(e) {
     e.preventDefault();
 
@@ -66,15 +169,21 @@ export default function App() {
     try {
       setSubmitting(true);
 
-      await fetch(API_BASE, {
+      const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plateNumber, spotCode }),
       });
 
+      if (!res.ok) {
+        throw new Error('Failed to create ticket');
+      }
+
       setPlateNumber('');
       setSpotCode('');
       loadTickets();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -143,13 +252,13 @@ export default function App() {
             <input
               placeholder="Plate Number"
               value={plateNumber}
-              onChange={e => setPlateNumber(e.target.value)}
+              onChange={(e) => setPlateNumber(e.target.value)}
             />
 
             <input
               placeholder="Spot Code"
               value={spotCode}
-              onChange={e => setSpotCode(e.target.value)}
+              onChange={(e) => setSpotCode(e.target.value)}
             />
 
             <button disabled={submitting}>
@@ -172,43 +281,68 @@ export default function App() {
               </thead>
 
               <tbody>
-                {activeTickets.map(t => (
-                  <tr key={t.id}>
-                    <td>{t.id}</td>
-                    <td>{t.plateNumber}</td>
-                    <td>{t.spotCode}</td>
-                    <td>
-                      <span className={`badge ${t.status}`}>
-                        {t.status}
-                      </span>
-                    </td>
-                    <td className="actions-cell">
-                      <button
-                        className="action-btn"
-                        disabled={t.status !== 'parked'}
-                        onClick={() => updateStatus(t.id, 'request')}
-                      >
-                        Request
-                      </button>
-
-                      <button
-                        className="action-btn"
-                        disabled={t.status !== 'requested'}
-                        onClick={() => updateStatus(t.id, 'ready')}
-                      >
-                        Ready
-                      </button>
-
-                      {t.status === 'ready' && (
+                {activeTickets.map((ticket) => (
+                  <React.Fragment key={ticket.id}>
+                    <tr>
+                      <td>{ticket.id}</td>
+                      <td>{ticket.plateNumber}</td>
+                      <td>{ticket.spotCode}</td>
+                      <td>
+                        <span className={`badge ${ticket.status}`}>
+                          {ticket.status}
+                        </span>
+                      </td>
+                      <td className="actions-cell">
                         <button
                           className="action-btn"
-                          onClick={() => updateStatus(t.id, 'handover')}
+                          disabled={ticket.status !== 'parked'}
+                          onClick={() => updateStatus(ticket.id, 'request')}
                         >
-                          Handover
+                          Request
                         </button>
-                      )}
-                    </td>
-                  </tr>
+
+                        <button
+                          className="action-btn"
+                          disabled={ticket.status !== 'requested'}
+                          onClick={() => updateStatus(ticket.id, 'ready')}
+                        >
+                          Ready
+                        </button>
+
+                        {ticket.status === 'ready' && (
+                          <button
+                            className="action-btn"
+                            onClick={() => updateStatus(ticket.id, 'handover')}
+                          >
+                            Handover
+                          </button>
+                        )}
+
+                        <button
+                          className="action-btn"
+                          onClick={() => setVisibleQrId(visibleQrId === ticket.id ? null : ticket.id)}
+                        >
+                          {visibleQrId === ticket.id ? 'Hide QR' : 'Show QR'}
+                        </button>
+                      </td>
+                    </tr>
+
+                    {visibleQrId === ticket.id && (
+                      <tr>
+                        <td colSpan={5}>
+                          <div className="qr-row">
+                            <QRCodeCanvas value={`http://localhost:5173/customer-ticket?id=${ticket.id}`} size={96} />
+                            <div className="qr-links">
+                              <a href={getCustomerUrl(ticket.id)} target="_blank" rel="noreferrer">
+                                Open customer ticket page
+                              </a>
+                              <code>{getCustomerUrl(ticket.id)}</code>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -221,4 +355,16 @@ export default function App() {
       </main>
     </div>
   );
+}
+
+export default function App() {
+  const pathName = window.location.pathname;
+  const query = new URLSearchParams(window.location.search);
+  const ticketId = query.get('id') || '';
+
+  if (pathName === CUSTOMER_PATH) {
+    return <CustomerTicketPage ticketId={ticketId} />;
+  }
+
+  return <ValetDashboard />;
 }
