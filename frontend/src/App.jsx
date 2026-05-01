@@ -22,14 +22,21 @@ function CustomerTicketPage({ ticketId }) {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch(`${API_BASE}/${ticketId}`);
-      const data = await res.json();
+      const res = await fetch(API_BASE);
+const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data?.message || 'Failed to load ticket');
-      }
+if (!res.ok) {
+  throw new Error(data?.message || 'Failed to load tickets');
+}
 
-      setTicket(data);
+const items = Array.isArray(data) ? data : data.items || [];
+const foundTicket = items.find((item) => String(item.id) === String(ticketId));
+
+if (!foundTicket) {
+  throw new Error('Ticket not found');
+}
+
+setTicket(foundTicket);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -366,9 +373,9 @@ export default function App() {
   const query = new URLSearchParams(window.location.search);
   const ticketId = query.get('id') || '';
 
-  if (pathName === CUSTOMER_PATH) {
-    return <CustomerTicketPage ticketId={ticketId} />;
-  }
+if (pathName === CUSTOMER_PATH && ticketId) {
+  return <CustomerTicketPage ticketId={ticketId} />;
+}
 
   return <ValetDashboard />;
 }
